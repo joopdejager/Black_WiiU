@@ -35,7 +35,19 @@ u32 ARC_TOOL_GetArchiveFileCount(u32 a)
     off = 0;
     ARC_TOOL_OpenArchive((struct ArcFile *)buf, a);
     FS_SeekFile((struct FSFile *)buf, 0xc, 0);
+#ifdef __MWERKS__
     FS_ReadFile((struct FSFile *)buf, &off, 2);
+#else
+    {
+        u16 half = 0;
+
+        /* The halfword at +0xc into the low half of `off`: reading it into
+         * the first two bytes of the wider variable is that only on a
+         * little-endian host. */
+        FS_ReadFile((struct FSFile *)buf, &half, 2);
+        off = half;
+    }
+#endif
     FS_SeekFile((struct FSFile *)buf, off + 4, 0);
     FS_ReadFile((struct FSFile *)buf, hdr, 6);
     FS_CloseFile(buf);

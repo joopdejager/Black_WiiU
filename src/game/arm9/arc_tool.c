@@ -330,7 +330,19 @@ u32 ARC_TOOL_SeekMember(struct ArcHandle *arc, u32 memberIdx, u32 skip, u32 size
     u32 off;
 
     FS_SeekFile(&arc->file, 0xc, 0);
+#ifdef __MWERKS__
     FS_ReadFile(&arc->file, &tmp, 2);
+#else
+    {
+        u16 half = 0;
+
+        /* The halfword at +0xc into the low half of `tmp`: reading it into
+         * the first two bytes of the wider variable is that only on a
+         * little-endian host. */
+        FS_ReadFile(&arc->file, &half, 2);
+        tmp = half;
+    }
+#endif
     fatOffset = tmp;
 
     FS_SeekFile(&arc->file, fatOffset + 4, 0);
@@ -489,7 +501,19 @@ u32 ARC_TOOL_GetArchiveFileCount(u32 archiveID)
     headerSize = 0;
     ARC_TOOL_OpenArchive((FSFile *)buf, archiveID);
     FS_SeekFile((FSFile *)buf, 0xc, 0);
+#ifdef __MWERKS__
     FS_ReadFile((FSFile *)buf, &headerSize, 2);
+#else
+    {
+        u16 half = 0;
+
+        /* The halfword at +0xc into the low half of `headerSize`: reading it into
+         * the first two bytes of the wider variable is that only on a
+         * little-endian host. */
+        FS_ReadFile((FSFile *)buf, &half, 2);
+        headerSize = half;
+    }
+#endif
     FS_SeekFile((FSFile *)buf, headerSize + 4, 0);
     FS_ReadFile((FSFile *)buf, header, 6);
     FS_CloseFile((FSFile *)buf);

@@ -173,7 +173,19 @@ u32 ARC_TOOL_SeekMember(struct ArcHandle *arc, u32 member, u32 base, u32 size)
     u32 off;
 
     FS_SeekFile(arc, 0xc, 0);
+#ifdef __MWERKS__
     FS_ReadFile(arc, &tmp, 2);
+#else
+    {
+        u16 half = 0;
+
+        /* The halfword at +0xc into the low half of `tmp`: reading it into
+         * the first two bytes of the wider variable is that only on a
+         * little-endian host. */
+        FS_ReadFile(arc, &half, 2);
+        tmp = half;
+    }
+#endif
     fatOffset = tmp;
 
     FS_SeekFile(arc, fatOffset + 4, 0);
