@@ -189,7 +189,14 @@ void RtcCommonCallback(int tag, u32 data, int err)
             {
                 RTCDate *pDst = (RTCDate *)rtcWork.buffer[0];
                 RTCRawDate *pSrc = RTC_RAW_DATE;
+#ifdef __MWERKS__
                 pDst->year = RtcBCD2HEX(*(u32 *)pSrc & 0xFF);
+#else
+                /* The raw load reads the low byte only on a little-endian host; the
+                 * bitfield reads it on any (a big-endian PC build stores RTCRawDate in
+                 * the DS order). */
+                pDst->year = RtcBCD2HEX(pSrc->year);
+#endif
                 pDst->month = RtcBCD2HEX(pSrc->month);
                 pDst->day = RtcBCD2HEX(pSrc->day);
                 pDst->week = RTC_GetDayOfWeek(pDst);
