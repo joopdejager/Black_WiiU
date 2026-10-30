@@ -118,9 +118,21 @@ typedef struct NNSSndArcBankInfo {
 typedef union NNSSndArcWaveArcInfo {
     unsigned word;
     struct {
+#ifdef __MWERKS__
         unsigned fileId : 24;
         unsigned isIndividual : 1;
         unsigned reserved : 7;
+#elif defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        /* A big-endian host fills bit-fields from the word's high bit: the
+         * other way round, fileId is still the word's low 24 bits. */
+        unsigned reserved : 7;
+        unsigned isIndividual : 1;
+        unsigned fileId : 24;
+#else
+        unsigned fileId : 24;
+        unsigned isIndividual : 1;
+        unsigned reserved : 7;
+#endif
     } bits;
 } NNSSndArcWaveArcInfo;
 
