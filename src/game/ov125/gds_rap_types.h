@@ -190,10 +190,20 @@ typedef struct GdsPacketHeader {
     GdsClientInfo client;
 } GdsPacketHeader;
 
+#ifndef __MWERKS__
+/* The packet's long long at +4, as on the DS: PowerPC and ARM EABI hosts
+ * align a long long to 8, and a typedef (unlike a field) may lower that. */
+typedef long long GdsWireS64 __attribute__((aligned(4)));
+#endif
+
 typedef struct GdsPacketDownload {      /* GDS_REQUEST_DOWNLOAD_ENTRIES body, 12 bytes */
     u16 reserved0;
     u16 reserved1;
+#ifdef __MWERKS__
     long long key;
+#else
+    GdsWireS64 key;
+#endif
 } GdsPacketDownload;
 
 typedef struct GdsPacketUploadVideo {   /* GDS_REQUEST_UPLOAD_VIDEO body, 0x19A8 bytes */
