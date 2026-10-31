@@ -1749,7 +1749,15 @@ int NNSi_G3dAnmGetTexSRTRotData(const void *pRes, u32 info, u32 offset, u32 fram
     }
 
 plain:
+#ifdef __MWERKS__
     return pKeys[frameIdx];
+#else
+    /* The key is a (sin, cos) pair of halfwords, as the blends above read
+     * it; read as one word only on a little-endian host does it give sin
+     * in the low half. */
+    return (u16)((const s16 *)(pKeys + frameIdx))[0]
+           | ((u32)(u16)((const s16 *)(pKeys + frameIdx))[1] << 16);
+#endif
 
 two:
     {

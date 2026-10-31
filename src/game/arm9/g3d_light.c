@@ -19,24 +19,7 @@
  *   G3D_SYSTEM_SetLight 0x02046A94 arm
  */
 #include "g3d_util_shared_types.h"
-
-struct LightSlotValue {
-    u16 red;
-    u16 green;
-    u16 blue;
-    u16 flags;
-};
-
-struct LightSlotDesc {
-    u8               slot;
-    u8               pad01;
-    struct LightSlotValue val;
-};
-
-struct LightSetDesc {
-    struct LightSlotDesc *recs;
-    u8               count;
-};
+#include "g3d_light.h"
 
 struct Rgb555 {
     u16 r;

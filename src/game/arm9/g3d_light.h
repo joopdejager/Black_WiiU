@@ -20,4 +20,25 @@ void G3D_LIGHT_GetColor(struct LightSlot *slots, u8 i, u16 *out);
 void G3D_LIGHT_SetColor(struct LightSlot *slots, u32 i, u16 *in);
 /* END mkheaders: generated region */
 
+/* A light set as the callers' data holds it (the title's d_021BD3DC):
+ * G3D_LIGHT_CreateSlots reads `count` records, each a slot number and that
+ * slot's value. */
+struct LightSlotValue {
+    u16 red;
+    u16 green;
+    u16 blue;
+    u16 flags;
+};
+
+struct LightSlotDesc {
+    u8               slot;
+    u8               pad01;
+    struct LightSlotValue val;
+};
+
+struct LightSetDesc {
+    struct LightSlotDesc *recs;
+    u8               count;
+};
+
 #endif

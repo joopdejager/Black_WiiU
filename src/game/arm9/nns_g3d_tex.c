@@ -98,7 +98,7 @@ BOOL NNS_G3dBindMdlPltt(NNSG3dResMdl *pMdl, const NNSG3dResTex *pTex);
 int NNS_G3dBindMdlPlttEx(NNSG3dResMdl *pMdl, NNSG3dResTex *pTex, u32 plttToMatIdx, u32 plttDataIdx);
 void NNS_G3dReleaseMdlPltt(NNSG3dResMdl *pMdl);
 extern u32 sHandlerCount;
-extern NNSiG3dAnmObjInitKey sHandlerKeys[];
+extern NNSiG3dAnmObjInitKey sHandlerKeys[10];   /* NNS_G3D_ANMFMT_MAX: five in use */
 extern u8 sHandlerFns[];
 extern NNSG3dFuncBlendVis gNNSiG3dFuncBlendVisDefault;
 extern NNSG3dFuncBlendJnt gNNSiG3dFuncBlendJntDefault;

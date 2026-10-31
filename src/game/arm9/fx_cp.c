@@ -224,6 +224,7 @@ fx32 FX_GetSqrtResult(void)
  */
 void FX_DivAsync(s32 numer, s32 denom)
 {
+#ifdef __MWERKS__
     vu32 *base = (vu32 *)REG_DIVCNT_ADDR;
 
     *(vu16 *)base = 1;
@@ -231,6 +232,16 @@ void FX_DivAsync(s32 numer, s32 denom)
     base[5] = numer;
     base[6] = denom;
     base[7] = 0;
+#else
+    /* Each register by its own address: the host keeps the 64-bit ones as
+     * 64-bit numbers, so a word's place in one depends on the host's order,
+     * which an index off the control register cannot say. */
+    *(vu16 *)REG_DIVCNT_ADDR = 1;
+    *(vu32 *)(REG_DIVCNT_ADDR + 0x10) = 0;
+    *(vu32 *)(REG_DIVCNT_ADDR + 0x14) = numer;
+    *(vu32 *)(REG_DIVCNT_ADDR + 0x18) = denom;
+    *(vu32 *)(REG_DIVCNT_ADDR + 0x1C) = 0;
+#endif
 }
 
 s32 FX_DivS32(s32 numer, s32 denom)
