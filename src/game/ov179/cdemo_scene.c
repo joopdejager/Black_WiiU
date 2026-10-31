@@ -206,6 +206,23 @@ void CDEMO_SCENE_LoadScreenBlock(void *a, int b, int c, int d, int e)
 {
     void *t = ARC_UTIL_LoadHandleMember(a, b, 1, 0x807f);
 
+#ifndef __MWERKS__
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    {
+        /* The block is a direct-colour bitmap, u16 pixels stored in the DS's
+         * order; a big-endian host's VRAM holds its own order, as the game's
+         * native stores there leave it, so the pixels are turned first. */
+        u8 *q = (u8 *)t;
+        int i;
+
+        for (i = 0; i + 1 < d; i += 2) {
+            u8 lo = q[i];
+            q[i] = q[i + 1];
+            q[i + 1] = lo;
+        }
+    }
+#endif
+#endif
     DC_FlushRange(t, d);
     if (e == 0) {
         GX_LoadBG2Scr(t, c, d);
