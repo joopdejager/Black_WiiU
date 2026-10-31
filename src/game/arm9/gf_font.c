@@ -800,8 +800,23 @@ void GF_FONT_SetTextColor(u32 red, u32 green, u32 blue)
         for (pixel1 = 0; pixel1 < 4; pixel1++) {
             for (pixel2 = 0; pixel2 < 4; pixel2++) {
                 for (pixel3 = 0; pixel3 < 4; pixel3++) {
+#ifdef __MWERKS__
                     gGlyphExpandTable[entry] = (u16)((palette[pixel3] << 12) | (palette[pixel2] << 8) |
                                               (palette[pixel1] << 4) | palette[pixel0]);
+#else
+                    {
+                        /* Four 4bpp pixels, the first in the low nibble of the
+                         * first byte: the glyph decoders store an entry as a
+                         * u16 and BMP_Blit4bpp reads the bytes, so a
+                         * big-endian host keeps each entry byte-swapped. */
+                        u16 pixels = (u16)((palette[pixel3] << 12) | (palette[pixel2] << 8) |
+                                           (palette[pixel1] << 4) | palette[pixel0]);
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                        pixels = (u16)((pixels << 8) | (pixels >> 8));
+#endif
+                        gGlyphExpandTable[entry] = pixels;
+                    }
+#endif
                     entry++;
                 }
             }
