@@ -504,10 +504,20 @@ static inline void LoadOneAffine_(const GXOamAffine *pAff, u32 offset, OBJLoadFu
 {
     offset += sizeof(u16) * 3;
 
+#ifdef __MWERKS__
     (*pOBJLoadFunc)(&pAff->PA, offset + sizeof(GXOamAttr) * 0, sizeof(u16));
     (*pOBJLoadFunc)(&pAff->PB, offset + sizeof(GXOamAttr) * 1, sizeof(u16));
     (*pOBJLoadFunc)(&pAff->PC, offset + sizeof(GXOamAttr) * 2, sizeof(u16));
     (*pOBJLoadFunc)(&pAff->PD, offset + sizeof(GXOamAttr) * 3, sizeof(u16));
+#else
+    /* The parameters may be stored in the DS's order (a big-endian host's
+     * OAM views), whose fields have no address: their bytes, by offset
+     * (PA is the fourth halfword, each next one eight halfwords on). */
+    (*pOBJLoadFunc)((const u8 *)pAff + sizeof(u16) * 3, offset + sizeof(GXOamAttr) * 0, sizeof(u16));
+    (*pOBJLoadFunc)((const u8 *)pAff + sizeof(u16) * 7, offset + sizeof(GXOamAttr) * 1, sizeof(u16));
+    (*pOBJLoadFunc)((const u8 *)pAff + sizeof(u16) * 11, offset + sizeof(GXOamAttr) * 2, sizeof(u16));
+    (*pOBJLoadFunc)((const u8 *)pAff + sizeof(u16) * 15, offset + sizeof(GXOamAttr) * 3, sizeof(u16));
+#endif
 }
 
 static inline void LoadOamAndAffineFast_(NNSG2dOamType type, u16 fromIdx, u16 toIdx)
@@ -647,7 +657,11 @@ static inline void ResetOam_(NNSG2dOamType type, u16 fromIdx, u16 toIdx)
     u16 i;
 
     for (i = 0; i < numArea; i++) {
+#ifdef __MWERKS__
         *((u16 *)pFrom) = 192;
+#else
+        pFrom->attr0 = 192;             /* the entry's own view (tools/sso_types.txt) */
+#endif
         pFrom++;
     }
 }
@@ -678,7 +692,22 @@ void NNS_G2dResetOamManagerBuffer(NNSG2dOamManagerInstance *pMan)
             void *pData = GetOamFromPtr_(pMan);
 
             DC_InvalidateRange(pData, szByte);
+#ifdef __MWERKS__
             NNSi_G2dDmaFill32(GX_GetDefaultDMA(), pData, 192, szByte);
+#else
+            {
+                /* Every word 192, through the entries' own view: a
+                 * big-endian host stores them in the DS's order
+                 * (tools/sso_types.txt), which a raw fill would not. */
+                GXOamAttr *pOam = (GXOamAttr *)pData;
+                u32 n;
+
+                for (n = 0; n < szByte / sizeof(GXOamAttr); n++) {
+                    pOam[n].attr01 = 192;
+                    pOam[n].attr23 = 192;
+                }
+            }
+#endif
 
         } else {
             ResetOam_(pMan->type,

@@ -3278,14 +3278,23 @@ u32 CLACT_EntryOam(struct OamManager *oam_manager, GXOamAttr *src_entry, u32 mod
                   u32 pltt_op)
 {
     GXOamAttr entry_copy;
+#ifdef __MWERKS__
     u32 *attr2;
+#endif
 
     MI_CpuCopy8(src_entry, &entry_copy, sizeof(entry_copy));
 
     if (pltt_op == 0) {
+#ifdef __MWERKS__
         attr2 = &entry_copy.attr23;
         *attr2 = (*attr2 & ~0xf000) |
                  ((((u32)(u16)*attr2 >> 12) + pltt_offset) << 28 >> 16);
+#else
+        /* The entry may be stored in the DS's order (a big-endian host's
+         * OAM views), whose fields have no address: the same word, named. */
+        entry_copy.attr23 = (entry_copy.attr23 & ~0xf000) |
+                            ((((u32)(u16)entry_copy.attr23 >> 12) + pltt_offset) << 28 >> 16);
+#endif
     } else if (pltt_op == 1) {
         entry_copy.attr23 = (entry_copy.attr23 & ~0xf000) |
                                (pltt_offset << 28 >> 16);

@@ -278,6 +278,7 @@ WmIcon *GFL_NET_WM_ICON_SetLevel(WmIcon *icon, int level)
  * have been drawn there) and frees it. */
 void GFL_NET_WM_ICON_Delete(WmIcon *icon)
 {
+#ifdef __MWERKS__
     *(volatile u32 *)(HW_OAM + 0x0) = 0x40000200;
     *(volatile u16 *)(HW_OAM + 0x4) = 0;
     *(volatile u32 *)(HW_OAM + 0x8) = 0x40000200;
@@ -290,6 +291,25 @@ void GFL_NET_WM_ICON_Delete(WmIcon *icon)
         oam[2] = 0x40000200;
         ((volatile u16 *)oam)[6] = 0;
     }
+#else
+    /* The same stores through the entries' own view: a big-endian host
+     * keeps OAM in the DS's order (tools/sso_types.txt). */
+    {
+        volatile GXOamAttr *oam = (volatile GXOamAttr *)HW_OAM;
+
+        oam[0].attr01 = 0x40000200;
+        oam[0].attr2 = 0;
+        oam[1].attr01 = 0x40000200;
+        oam[1].attr2 = 0;
+        if (icon->screenChanged != 0) {
+            oam = (volatile GXOamAttr *)HW_DB_OAM;
+            oam[0].attr01 = 0x40000200;
+            oam[0].attr2 = 0;
+            oam[1].attr01 = 0x40000200;
+            oam[1].attr2 = 0;
+        }
+    }
+#endif
     GFL_HEAP_Free(icon);
 }
 
