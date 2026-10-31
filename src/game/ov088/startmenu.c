@@ -866,7 +866,7 @@ extern ClactResConfig d_021BD688;
 extern char d_021BD5DC[];
 extern char d_021BD5E4[];
 extern char d_021BD5D4[];
-extern const struct RowInfo gStartMenuRowInfo[];
+extern const struct RowInfo gStartMenuRowInfo[8];   /* one per menu row (STARTMENU_LoadRowBuffers) */
 extern char d_021BD818[];
 
 #define reg_G2_BLDCNT      (*(volatile u16 *)REG_BLDCNT_ADDR)
