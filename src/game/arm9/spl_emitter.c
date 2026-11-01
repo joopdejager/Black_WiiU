@@ -353,11 +353,21 @@ typedef union SPLCurveInPeakOut {
 
 typedef struct SPLResourceHeader {
     SPLResourceFlags flags;
+#ifdef __MWERKS__
     VecFx32 emitterBasePos;
+#else
+    /* the file's vector in the DS's order (tools/sso_types.txt): VecFx32
+     * keeps the host's, so the header declares its own */
+    struct { fx32 x, y, z; } emitterBasePos;
+#endif
     fx32 emissionCount; // Number of particles to emit per emission interval
     fx32 radius; // Used for circle, sphere, and cylinder emissions
     fx32 length; // Used for cylinder emission
+#ifdef __MWERKS__
     VecFx16 axis;
+#else
+    struct { fx16 x, y, z; } axis;
+#endif
     GXRgb color;
     fx32 initVelPosAmplifier;
     fx32 initVelAxisAmplifier;
@@ -3558,8 +3568,16 @@ void SPL_EMITTER_SetupResource(volatile struct ResourceSetup *o, struct SplEmitt
   o->color = 0x7fff;
   *((u8 *) (&o->misc)) = o->resource->resource->miscByte0;
   *(((u8 *) (&o->misc)) + 1) = o->resource->resource->miscByte1;
+#ifdef __MWERKS__
   o->misc = o->misc & (~0x70000u);
   o->misc = o->misc & 0x0007ffffu;
+#else
+  /* the masks clear SPLEmitter's misc.updateCycle (bits 16..18) and
+   * misc.reserved (19..31), the order a little-endian host lays the
+   * bit-fields out in; a big-endian one starts from the top bit */
+  ((volatile SPLEmitter *)o)->misc.updateCycle = 0;
+  ((volatile SPLEmitter *)o)->misc.reserved = 0;
+#endif
   o->collisionPlaneHeight = 0x80000000u;
   o->textureS = (s16) (0x1000 << ((o->resource->resource->polygonFlags << 6) >> 30));
   o->textureT = (s16) (0x1000 << ((o->resource->resource->polygonFlags << 4) >> 30));
@@ -4432,7 +4450,13 @@ void SPL_EMITTER_FreeTexNode(struct VramFreeList *h)
                 }
             }
             if (n->suppressed == 0) {
+#ifdef __MWERKS__
                 idx = (((struct VramFreeNode *)n)->phaseFlags << 13) >> 29;
+#else
+                /* the shifts take SPLEmitter's misc.updateCycle, bits 16..18
+                 * in a little-endian host's bit-field order only */
+                idx = ((struct SPLEmitter *)n)->misc.updateCycle;
+#endif
                 if (idx == 0 || h->parity == idx - 1)
                     SPL_EMITTER_UpdateParticles((struct SPLManager *)h, (struct SPLEmitter *)n);
             }

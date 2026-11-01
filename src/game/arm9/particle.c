@@ -1212,8 +1212,29 @@ struct Ent {
 
 struct BlkInner {
     u8   pad00[0x04];
+#ifdef __MWERKS__
     Vec3 pos;               /* +0x04 */
+#else
+    /* the SPA record's emitterBasePos, in the DS's order on every host
+     * (tools/sso_types.txt): Vec3 keeps the host's */
+    struct { fx32 x, y, z; } pos;
+#endif
 };
+
+#ifndef __MWERKS__
+/* The SPA files stay in the DS's order on every host (spl_emitter.c): the
+ * behaviour setters store into a loaded file's blocks with this. */
+static void PARTICLE_StoreDsVec(void *dst, const Vec3 *v)
+{
+    u8 *d = dst;
+    const fx32 w[3] = { v->x, v->y, v->z };
+    int i, k;
+
+    for (i = 0; i < 3; i++)
+        for (k = 0; k < 4; k++)
+            d[i * 4 + k] = (u8)((u32)w[i] >> (k * 8));
+}
+#endif
 
 struct Blk {
     struct BlkInner *inner; /* +0x00, re-read per statement */
@@ -1533,8 +1554,13 @@ void PARTICLE_EMITTER_SetBehavior2Data(struct Obj3D *p, Vec3 *q)
 {
     Vec3 *r = PARTICLE_EMITTER_FindBehaviorData(p, 2);
 
+#ifdef __MWERKS__
     if (r != 0)
         *r = *q;
+#else
+    if (r != 0)
+        PARTICLE_StoreDsVec(r, q);
+#endif
 }
 
 /*
@@ -1547,8 +1573,15 @@ void PARTICLE_EMITTER_SetBehavior3Half(struct Obj3D *p, u16 *q)
 {
     u16 *r = PARTICLE_EMITTER_FindBehaviorData(p, 3);
 
+#ifdef __MWERKS__
     if (r != 0)
         r[1] = *q;
+#else
+    if (r != 0) {
+        ((u8 *)r)[2] = (u8)*q;
+        ((u8 *)r)[3] = (u8)(*q >> 8);
+    }
+#endif
 }
 
 /*
@@ -1561,8 +1594,13 @@ void PARTICLE_EMITTER_SetBehavior5Data(struct Obj3D *p, Vec3 *q)
 {
     Vec3 *r = PARTICLE_EMITTER_FindBehaviorData(p, 5);
 
+#ifdef __MWERKS__
     if (r != 0)
         *r = *q;
+#else
+    if (r != 0)
+        PARTICLE_StoreDsVec(r, q);
+#endif
 }
 
 /*
@@ -1681,7 +1719,12 @@ u32 PARTICLE_AllocPlttVramTracked(u32 a, u32 b)
  */
 u16 PARTICLE_RESOURCE_GetType(void *res)
 {
+#ifdef __MWERKS__
     return ((u16 *)res)[4];
+#else
+    /* the SPA header's record count, in the DS's order on every host */
+    return (u16)(((u8 *)res)[8] | ((u8 *)res)[9] << 8);
+#endif
 }
 
 /*
