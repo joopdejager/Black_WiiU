@@ -450,6 +450,20 @@ void FIELD_G3DOBJ_TransferResourceTexture(FieldG3dObjRes *res)
     res->state = FIELD_G3DOBJ_RES_READY;
 }
 
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+/* FIELD_G3DOBJ_LoadResource tints a model's palette in place.  A 3D file's palette stays in the DS's order (texture palette
+ * memory holds that order, and the port's texture decoder reads it so), so
+ * a big-endian host turns its halfwords around native colour arithmetic. */
+static void FIELD_G3DOBJ_TurnPltt(void *pltt, u32 count)
+{
+    u8 *p = pltt;
+    u32 i;
+    u8 t;
+
+    for (i = 0; i < count * 2; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+}
+#endif
+
 void FIELD_G3DOBJ_LoadResource(FieldG3dObjRes *res, int heapId, FieldG3dObjResDesc *desc, int mode, const u8 *palTable)
 {
     G3dResource *palRes;
@@ -468,7 +482,13 @@ void FIELD_G3DOBJ_LoadResource(FieldG3dObjRes *res, int heapId, FieldG3dObjResDe
             palRes = res->texture;
         if (G3D_SYSTEM_CheckResourceType(palRes, 2)) {
             tex = (struct ResTexPltt *)NNS_G3dGetTex(G3D_SYSTEM_GetResourceFile(palRes));
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+            FIELD_G3DOBJ_TurnPltt((u8 *)tex + tex->ofsPlttData, (u32)(tex->sizePltt << 3) / sizeof(u16));
             PALANM_ConvertGrayTable((u16 *)((u8 *)tex + tex->ofsPlttData), (u32)(tex->sizePltt << 3) / sizeof(u16), palTable);
+            FIELD_G3DOBJ_TurnPltt((u8 *)tex + tex->ofsPlttData, (u32)(tex->sizePltt << 3) / sizeof(u16));
+#else
+            PALANM_ConvertGrayTable((u16 *)((u8 *)tex + tex->ofsPlttData), (u32)(tex->sizePltt << 3) / sizeof(u16), palTable);
+#endif
         }
     }
     if (res->model != 0 || res->texture != 0) {

@@ -2142,6 +2142,20 @@ int BTLV_EFFECT_GetBitMask(int pos)
     return 1 << pos;
 }
 
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+/* The battle fades blend a model's palette natively.  A 3D file's palette stays in the DS's order (texture palette
+ * memory holds that order, and the port's texture decoder reads it so), so
+ * a big-endian host turns its halfwords around native colour arithmetic. */
+static void BTLV_EFFECT_TurnPltt(void *pltt, u32 count)
+{
+    u8 *p = pltt;
+    u32 i;
+    u8 t;
+
+    for (i = 0; i < count * 2; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+}
+#endif
+
 void BTLV_EFFECT_UpdateTexturePaletteFade(BtlvPalFade *fade)
 {
     int i;
@@ -2156,7 +2170,14 @@ void BTLV_EFFECT_UpdateTexturePaletteFade(BtlvPalFade *fade)
                 tex = (NNSG3dResTex *)NNS_G3dGetTex(G3D_SYSTEM_GetResourceFile(fade->resources[i]));
                 size = tex->plttInfo.sizePltt << 3;
                 vramOffset = (u16)tex->plttInfo.vramKey << 3;
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                BTLV_EFFECT_TurnPltt((char *)tex + tex->plttInfo.ofsPlttData, size >> 1);
                 PALANM_BlendColors((u16 *)((char *)tex + tex->plttInfo.ofsPlttData), fade->palettes[i], (u16)(size >> 1), fade->current, fade->color);
+                BTLV_EFFECT_TurnPltt((char *)tex + tex->plttInfo.ofsPlttData, size >> 1);
+                BTLV_EFFECT_TurnPltt(fade->palettes[i], size >> 1);
+#else
+                PALANM_BlendColors((u16 *)((char *)tex + tex->plttInfo.ofsPlttData), fade->palettes[i], (u16)(size >> 1), fade->current, fade->color);
+#endif
                 NNS_GfdRegisterNewVramTransferTask(1, vramOffset, fade->palettes[i], size);
             }
             if (fade->current == fade->target) {

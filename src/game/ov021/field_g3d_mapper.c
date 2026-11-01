@@ -555,6 +555,20 @@ void FIELD_G3D_MAPPER_ReleaseBlocks(FieldG3dMapper *mapper)
  * pixel converter (luma weights 76/151/29 over a lookup table); filing it
  * as an arm9 witness would lift this to EXACT.
  */
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+/* FIELD_G3D_MAPPER_TintTexture tints a map block's palette in place.  A 3D file's palette stays in the DS's order (texture palette
+ * memory holds that order, and the port's texture decoder reads it so), so
+ * a big-endian host turns its halfwords around native colour arithmetic. */
+static void FIELD_G3D_MAPPER_TurnPltt(void *pltt, u32 count)
+{
+    u8 *p = pltt;
+    u32 i;
+    u8 t;
+
+    for (i = 0; i < count * 2; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+}
+#endif
+
 int FIELD_G3D_MAPPER_TintTexture(G3dResource *res, const u8 *tintTable)
 {
     G3dResTexView *tex = (struct G3dResTexView *)NNS_G3dGetTex(G3D_SYSTEM_GetResourceFile(res));
@@ -562,7 +576,15 @@ int FIELD_G3D_MAPPER_TintTexture(G3dResource *res, const u8 *tintTable)
         u32 size = tex->plttSize << 3;
         u32 offset = tex->plttDataOffset;
         if (tintTable != 0)
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        {
+            FIELD_G3D_MAPPER_TurnPltt((u8 *)tex + offset, size >> 1);
             PALANM_ConvertGrayTable((u16 *)((u8 *)tex + offset), size >> 1, tintTable);
+            FIELD_G3D_MAPPER_TurnPltt((u8 *)tex + offset, size >> 1);
+        }
+#else
+            PALANM_ConvertGrayTable((u16 *)((u8 *)tex + offset), size >> 1, tintTable);
+#endif
         return 1;
     }
     return 0;

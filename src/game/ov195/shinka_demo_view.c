@@ -1146,6 +1146,17 @@ Grid *SHINKA_DEMO_VIEW_CreateGrid(u32 monsNo, u32 formNo, u32 sex, u32 isShiny, 
     }
     BMP_ConvertToLinear(g->canvas, 0, heap);
     NNS_GfdRegisterNewVramTransferTask(0, tex, BMP_GetPixels(g->canvas), 0x2000);
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    {
+        /* the G2D palette, in the host's order once loaded, goes to texture
+         * palette memory, which holds the DS's; it is kept turned, and
+         * SHINKA_DEMO_VIEW_ApplyGridPalette reads it so */
+        u8 *tp = (u8 *)g->pltt->raw;
+        u8 tt;
+        int ti;
+        for (ti = 0; ti < 0x20; ti += 2) { tt = tp[ti]; tp[ti] = tp[ti + 1]; tp[ti + 1] = tt; }
+    }
+#endif
     NNS_GfdRegisterNewVramTransferTask(1, pltt, g->pltt->raw, 0x20);
     return g;
 }
@@ -1193,7 +1204,11 @@ void SHINKA_DEMO_VIEW_InitGrid(Grid *grid, u16 heap)
     SHINKA_DEMO_VIEW_SetupGridCells((Grid *)grid, heap);
     grid->state = 0;
     for (i = 0; i < 16; i++)
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        grid->pal[i] = 0xFF7F;  /* 0x7FFF in the DS's order: texture palette memory's */
+#else
         grid->pal[i] = 0x7FFF;
+#endif
     grid->color = 0x7FFF;
     q = 0;
     grid->flevel = q;
@@ -1704,9 +1719,19 @@ void SHINKA_DEMO_VIEW_ApplyGridPalette(Grid *p, int x)
     tb = (s16)((p->color & 0x7c00) >> 10);
 
     for (i = 1; i < 16; i++) {
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        {
+            /* the grid keeps the palette in the DS's order (SHINKA_DEMO_VIEW_CreateGrid) */
+            u16 s = (u16)((src[i] << 8) | (src[i] >> 8));
+            r = (s16)(s & 0x1f);
+            g = (s16)((s & 0x3e0) >> 5);
+            b = (s16)((s & 0x7c00) >> 10);
+        }
+#else
         r = (s16)(src[i] & 0x1f);
         g = (s16)((src[i] & 0x3e0) >> 5);
         b = (s16)((src[i] & 0x7c00) >> 10);
+#endif
         level = p->flevel;
         if (level == 31) {
             r = tr;
@@ -1720,7 +1745,16 @@ void SHINKA_DEMO_VIEW_ApplyGridPalette(Grid *p, int x)
             g = g > 31 ? 31 : (g < 0 ? 0 : g);
             b = b > 31 ? 31 : (b < 0 ? 0 : b);
         }
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        {
+            /* the colour in the DS's order: the buffer goes to texture
+             * palette memory, which holds that order */
+            u16 c = (u16)(r | (g << 5) | (b << 10));
+            p->pal[i] = (u16)((c << 8) | (c >> 8));
+        }
+#else
         p->pal[i] = r | (g << 5) | (b << 10);
+#endif
     }
     NNS_GfdRegisterNewVramTransferTask(1, p->plttAddr, p->pal, 0x20);
 }

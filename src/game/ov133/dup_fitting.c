@@ -1219,11 +1219,22 @@ void DUP_FITTING_InitFrames(struct DupFittingWork *work)
         pal = (u16 *)G3D_SYSTEM_GetPlttDataAddr(h);
         n = sz >> 1;
         for (k = 0; k < n; k++) {
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+            /* the model's palette stays in the DS's order (texture palette
+             * memory's), so a big-endian host reads and stores it turned */
+            u16 c = (u16)((pal[k] << 8) | (pal[k] >> 8));
+#else
             u16 c = pal[k];
+#endif
             u32 b = (u32)(u8)((c & 0x7C00) >> 10) >> 3;
             u32 r = (u32)(u8)(c & 0x1F) >> 3;
             u32 g = (u32)(u8)((c & 0x3E0) >> 5) >> 3;
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+            c = (u16)(r | (g << 5) | (b << 10));
+            pal[k] = (u16)((c << 8) | (c >> 8));
+#else
             pal[k] = r | (g << 5) | (b << 10);
+#endif
         }
         buf = G3D_SYSTEM_GetResourceFile(h);
         res = G3D_SYSTEM_GetResourceTex(h);

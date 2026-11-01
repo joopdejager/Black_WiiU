@@ -1303,6 +1303,17 @@ void FLD3D_CI_LoadPokemonIconTexture(Fld3dCi *ci)
     }
     BMP_ConvertToLinear(ci->canvas, 0, heapId);
     NNS_GfdRegisterNewVramTransferTask(0, texOffset, BMP_GetPixels(ci->canvas), 0x2000);
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    {
+        /* a G2D palette, in the host's order once loaded, queued for
+         * texture palette memory, which holds the DS's: turned for good
+         * (nothing reads it natively after this) */
+        u8 *tp = (u8 *)ci->pltt->raw;
+        u8 tt;
+        int ti;
+        for (ti = 0; ti < 0x20; ti += 2) { tt = tp[ti]; tp[ti] = tp[ti + 1]; tp[ti + 1] = tt; }
+    }
+#endif
     NNS_GfdRegisterNewVramTransferTask(1, plttOffset, ci->pltt->raw, 0x20);
     GFL_HEAP_GetHeapHead(ci->heapId);
 }
@@ -1409,6 +1420,17 @@ void FLD3D_CI_LoadNameTexture(Fld3dCi *ci, const char *texName, const char *pltt
     }
     BMP_ConvertToLinear(ci->canvas, 0, heapId);
     NNS_GfdRegisterNewVramTransferTask(0, texOffset, BMP_GetPixels(ci->canvas), 0x2000);
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    {
+        /* a G2D palette, in the host's order once loaded, queued for
+         * texture palette memory, which holds the DS's: turned for good
+         * (nothing reads it natively after this) */
+        u8 *tp = (u8 *)ci->pltt->raw;
+        u8 tt;
+        int ti;
+        for (ti = 0; ti < 0x20; ti += 2) { tt = tp[ti]; tp[ti] = tp[ti + 1]; tp[ti + 1] = tt; }
+    }
+#endif
     NNS_GfdRegisterNewVramTransferTask(1, plttOffset, ci->pltt->raw, 0x20);
     GFL_HEAP_GetHeapHead(ci->heapId);
 }
