@@ -261,7 +261,15 @@ typedef struct {short x,y;} NameinGraphicVec2;
 
 typedef struct {unsigned words[4];} Disp;
 
+#ifdef __MWERKS__
 typedef struct {unsigned words[8];} Bg;
+#else
+/* the BG template itself: its words at +0x10 and +0x18 are four u8 each,
+ * which a big-endian host's data typing turns as bytes only when it sees
+ * the real type (BG_SYS_InitBgLayer allocated a word-swapped screen size) */
+#include "../arm9/bg_sys_types.h"
+typedef struct BgTemplate Bg;
+#endif
 
 typedef struct {unsigned id;Bg config;unsigned type,enabled;} NameinGraphicEntry;
 
