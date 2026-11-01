@@ -969,6 +969,23 @@ void NNSi_G2dSetupVramResource(struct VramResource *r, u32 dst, int mode, struct
     NNSi_G2dSetVramHandle((int *)out, mode, dst);
 }
 
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+/* A G2D palette is turned to the host's order when its file loads, but
+ * texture palette memory holds the DS's (the port's texture decoder reads
+ * it so, as the 3D files' palettes are uploaded).  The palette's halfwords
+ * are turned around the upload and back. */
+static void NNSi_G2dLoadTexPlttDsOrder(void *src, u32 offset, u32 size)
+{
+    u8 *p = src;
+    u32 i;
+    u8 t;
+
+    for (i = 0; i + 1 < size; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+    GX_LoadTexPltt(src, offset, size);
+    for (i = 0; i + 1 < size; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+}
+#endif
+
 void NNSi_G2dLoadVramResourceBySel(VramResourceSel *self, u32 offset, int sel, VramHandleSel *out)
 {
     uptr a = self->src;
@@ -997,7 +1014,11 @@ void NNSi_G2dLoadVramResourceBySel(VramResourceSel *self, u32 offset, int sel, V
         break;
     case 0:
         GX_BeginLoadTexPltt();
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        NNSi_G2dLoadTexPlttDsOrder((void *)a, offset, b);
+#else
         GX_LoadTexPltt((void *)a, offset, b);
+#endif
         GX_EndLoadTexPltt();
         break;
     }
@@ -1112,7 +1133,11 @@ void NNSi_G2dLoadVramResourceList(VramResourceList *self, VramResourceIndices *l
                 break;
             case 0:
                 GX_BeginLoadTexPltt();
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                NNSi_G2dLoadTexPlttDsOrder((void *)(a + d), base + t, step);
+#else
                 GX_LoadTexPltt((void *)(a + d), base + t, step);
+#endif
                 GX_EndLoadTexPltt();
                 break;
             default:
