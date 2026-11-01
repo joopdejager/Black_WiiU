@@ -18,9 +18,18 @@ struct IcaAnime;
  */
 struct Cam {
     u8  pad0[6];
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    /* a big-endian host allocates bit-fields from the top bit of the
+     * halfword (the data typing turns it to the host's order): declared in
+     * reverse so doubled is still bit 0 */
+    u16 rest    : 14;
+    u16 count   : 1;
+    u16 doubled : 1;
+#else
     u16 doubled : 1;   /* 0x06 bit 0: size or value doubled */
     u16 count   : 1;   /* 0x06 bit 1 */
     u16 rest    : 14;
+#endif
     int f8, fc, f10, f14, f18, f1c;
     s16 clipOffset;    /* 0x20: near/far clip offset, first display mode */
     s16 clipOffsetAlt; /* 0x22: near/far clip offset, second display mode */
