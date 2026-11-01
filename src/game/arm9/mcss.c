@@ -236,6 +236,31 @@ typedef struct McssCellHeader {
     McssCellRec cells[1];
 } McssCellHeader;
 
+#ifndef __MWERKS__
+/* An NCEC member has no NITRO header, so no extractor turns it: its words
+ * reach the host in the DS's order.  Rewritten in place as native values
+ * after each load (the count, the four halfwords, the cells' fx32 quads;
+ * the stop-cell bytes after them stay), the same values on any host. */
+static void MCSS_CellHeaderToHost(McssCellHeader *h)
+{
+    u8 *b = (u8 *)h;
+    u32 n, i;
+    u32 *w;
+
+    n = (u32)b[0] | (u32)b[1] << 8 | (u32)b[2] << 16 | (u32)b[3] << 24;
+    h->cellCount = n;
+    h->sizeX = (u16)(b[4] | b[5] << 8);
+    h->sizeY = (u16)(b[6] | b[7] << 8);
+    h->ofsX = (s16)(b[8] | b[9] << 8);
+    h->ofsY = (s16)(b[10] | b[11] << 8);
+    w = (u32 *)h->cells;
+    for (i = 0; i < n * 12; i++) {
+        u8 *c = (u8 *)&w[i];
+        w[i] = (u32)c[0] | (u32)c[1] << 8 | (u32)c[2] << 16 | (u32)c[3] << 24;
+    }
+}
+#endif
+
 /* Texture image proxy: VRAM addresses (3D, main, sub; -1 is unset) and the texture parameters. */
 typedef struct McssTexImage {
     u32 vramAddr[3];                    /* 0x00 */
@@ -2410,6 +2435,9 @@ void MCSS_LoadResource(McssSys *sys, u32 index, const McssAddWork *addWork)
     MCSS_SetAnimeIndex(work, 0);
 
     cellHeader = ARC_TOOL_LoadMember(addWork->arcId, addWork->cellHeaderMember, heap);
+#ifndef __MWERKS__
+    MCSS_CellHeaderToHost(cellHeader);
+#endif
     work->cellHeader = cellHeader;
     work->stopCellTable = (u8 *)cellHeader + ((0x30 * cellHeader->cellCount + 0xC) & ~3u);
 
@@ -2490,6 +2518,9 @@ void MCSS_LoadResourceShared(McssSys *sys, u32 index, const McssAddWork *addWork
     MCSS_SetAnimeIndex(work, 0);
 
     cellHeader = ARC_TOOL_LoadHandleMember(arcHandle, addWork->cellHeaderMember, (u16)work->heapId);
+#ifndef __MWERKS__
+    MCSS_CellHeaderToHost(cellHeader);
+#endif
     work->cellHeader = cellHeader;
     work->stopCellTable = (u8 *)cellHeader + ((0x30 * cellHeader->cellCount + 0xC) & ~3u);
 
