@@ -114,14 +114,29 @@ struct Demo3dEngineConfig { u8 pad[0xd],hour,minute; u8 second:7,spare:1; };
 
 struct Demo3dEngineRecord {
     u16 reserved00,reserved02,id;
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    /* a big-endian host allocates bit-fields from the top bit of the
+     * halfword (the data typing turns it to the host's order): declared in
+     * reverse, so each keeps its bit */
+    u16 padbits:2,ref:5,test:1,mode2:1,mode1:1,edge:1,fog:1,anti:1,blend:1,b1:1,b0:1;
+#else
     u16 b0:1,b1:1,blend:1,anti:1,fog:1,edge:1,mode1:1,mode2:1,test:1,ref:5,padbits:2;
+#endif
     u8 pad08[0x1c];
     int depthoffset;
     u16 clear,alpha;
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    u16 polybit:1,polygon:15;
+#else
     u16 polygon:15,polybit:1;
+#endif
     u16 depth,fogcolor;
     u8 fogalpha,slope;
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    u16 mode:1,offset:15;
+#else
     u16 offset:15,mode:1;
+#endif
     u8 fogtable[8];
     u16 edgecolors[8];
 };
