@@ -557,7 +557,13 @@ int EVENT_MAPCHANGE_FirstStartEvent(struct GameEvent *event, int *seq, void *wor
     switch (*seq) {
     case 0:
         GX_SetBankForLCDC(0x1ff);
+#ifdef __MWERKS__
         MIi_CpuClearFast(0, (void *)(0x1a << 22), 0x29 << 14);
+#else
+        /* LCDC VRAM, banks A..I: spelled as the address so the host build
+         * translates it to where the banks live */
+        MIi_CpuClearFast(0, (void *)0x06800000, 0x29 << 14);
+#endif
         GX_DisableBankForLCDC();
         (*seq)++;
         break;
@@ -655,7 +661,13 @@ struct GameEvent *EVENT_MAPCHANGE_CreateNewGameStartEvent(struct GameSystem *gam
     PALANM_StartTimer();
     EVENT_MAPCHANGE_AddPresetMail(work->gameData);
     GX_SetBankForLCDC(0x1ff);
+#ifdef __MWERKS__
     MIi_CpuClearFast(0, (void *)(0x1a << 22), 0x29 << 14);
+#else
+    /* LCDC VRAM, banks A..I: spelled as the address so the host build
+     * translates it to where the banks live */
+    MIi_CpuClearFast(0, (void *)0x06800000, 0x29 << 14);
+#endif
     GX_DisableBankForLCDC();
     return event;
 }
