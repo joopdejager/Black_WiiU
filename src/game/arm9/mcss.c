@@ -302,6 +302,18 @@ typedef struct McssTransTask {
     u32            hasTaskSys;          /* 0x28 */
 } McssTransTask;
 
+#ifndef __MWERKS__
+/* McssSys's flag word, named so tools/sso_types.txt can store it in the
+ * DS's order: the code sets bit 0 with masks and reads it as orthoMode. */
+typedef union McssSysFlags {
+    u32 raw;
+    struct {
+        u32 orthoMode : 1;
+        u32 nearDepthRange : 1;
+    } bits;
+} McssSysFlags;
+#endif
+
 /*
  * The MCSS system: one per scene, owns the work slots and the shared
  * shadow palette.  Size 0x4C (MCSS_Init allocates it).
@@ -314,6 +326,7 @@ typedef struct McssSys {
     s32 maxCount;                       /* 0x10 */
     struct McssWork **works;            /* 0x14 */
     McssPlttProxy shadowPltt;           /* 0x18 */
+#ifdef __MWERKS__
     union {                             /* 0x2C */
         u32 raw;
         struct {
@@ -321,6 +334,9 @@ typedef struct McssSys {
             u32 nearDepthRange : 1;     /* far plane 512 and depth step 0x100 */
         } bits;
     } flags;
+#else
+    McssSysFlags flags;                 /* 0x2C */
+#endif
     u32 texTransAdrs;                   /* 0x30 */
     u32 plttTransAdrs;                  /* 0x34 */
     McssLoadHook loadHook;              /* 0x38 */
@@ -1845,7 +1861,13 @@ int MCSS_GetVanishFlag(McssWork *work)
 void MCSS_SetVanishFlag(McssWork *work)
 {
     /* stand-in: volatile keeps the word read-modify-write of the original */
+#ifdef __MWERKS__
     *(volatile u32 *)&work->flags.raw |= 0x800u;
+#else
+    /* bit 11 is vanishFlag; the host stores McssFlags in the DS's order
+     * (tools/sso_types.txt), whose scalars GCC gives no address */
+    work->flags.bits.vanishFlag = 1;
+#endif
 }
 
 /*
@@ -1862,7 +1884,11 @@ void MCSS_SetVanishFlag(McssWork *work)
 void MCSS_ResetVanishFlag(McssWork *work)
 {
     /* stand-in: volatile keeps the word read-modify-write of the original */
+#ifdef __MWERKS__
     *(volatile u32 *)&work->flags.raw &= 0xFFFFF7FFu;
+#else
+    work->flags.bits.vanishFlag = 0;
+#endif
 }
 
 /*
