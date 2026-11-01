@@ -815,6 +815,16 @@ void POKETRADE_3D_UploadTexturePages(TradeWork *p, int count)
             POKETRADE_3D_FillTextureHeader((u16 *)v, p->texHeader, 2);
         else
             POKETRADE_3D_FillTexturePage((u16 *)v, p->texSource, i - 1, 2);
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        {
+            /* the cells pack 4bpp texels into u16s with native stores;
+             * texture memory holds the DS's byte order, so a big-endian
+             * host turns the page's halfwords before the upload */
+            int k;
+            char t;
+            for (k = 0; k < 0x200; k += 2) { t = v[k]; v[k] = v[k + 1]; v[k + 1] = t; }
+        }
+#endif
         DC_FlushRange(v, 0x200);
         GX_LoadTex(v, i * 0x200 + 0x3000, 0x200);
     }
@@ -919,6 +929,22 @@ typedef struct {
     u16 firstColor;           /* 0x20 first palette entry */
 } IcaTextureData;
 
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+/* The trade screen's palettes are a G2D file's and values computed from it, in the host's order: texture palette memory holds the DS's order (the port's texture
+ * decoder reads it so, as the 3D files' palettes are uploaded), so a
+ * big-endian host turns the palette's halfwords around the upload. */
+static void POKETRADE_3D_LoadTexPlttDsOrder(void *src, u32 offset, u32 size)
+{
+    u8 *p = src;
+    u32 i;
+    u8 t;
+
+    for (i = 0; i + 1 < size; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+    GX_LoadTexPltt(src, offset, size);
+    for (i = 0; i + 1 < size; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+}
+#endif
+
 void POKETRADE_3D_LoadTexturePalette(TradeWork *p)
 {
     void *v;
@@ -933,7 +959,11 @@ void POKETRADE_3D_LoadTexturePalette(TradeWork *p)
     ((IcaTextureData *)data)->firstColor = 0x14A5;
     DC_FlushRange(data + 32, 32);
     GX_BeginLoadTexPltt();
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    POKETRADE_3D_LoadTexPlttDsOrder(data + 32, 0x2000, 32);
+#else
     GX_LoadTexPltt(data + 32, 0x2000, 32);
+#endif
     GX_EndLoadTexPltt();
     MI_CpuCopy8(data + 32, p->palettePageA, 32);
     GFL_HEAP_Free(allocation);
@@ -957,7 +987,11 @@ void POKETRADE_3D_FadeTexturePalette(TradeWork *p)
         }
     }
     GX_BeginLoadTexPltt();
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    POKETRADE_3D_LoadTexPlttDsOrder(p->palettePageB, 0x2000, 32);
+#else
     GX_LoadTexPltt(p->palettePageB, 0x2000, 32);
+#endif
     GX_EndLoadTexPltt();
 }
 

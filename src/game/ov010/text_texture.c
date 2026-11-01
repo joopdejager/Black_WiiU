@@ -378,6 +378,22 @@ void TEXT_TEXTURE_UploadTextTexture(TexReq *req, struct Strbuf *text, u16 xPos, 
     BMP_Delete(tmp);
 }
 
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+/* The palette is a G2D file's, in the host's order (FLD3D_CI's cut-in name plate): texture palette memory holds the DS's order (the port's texture
+ * decoder reads it so, as the 3D files' palettes are uploaded), so a
+ * big-endian host turns the palette's halfwords around the upload. */
+static void TEXT_TEXTURE_LoadTexPlttDsOrder(void *src, u32 offset, u32 size)
+{
+    u8 *p = src;
+    u32 i;
+    u8 t;
+
+    for (i = 0; i + 1 < size; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+    GX_LoadTexPltt(src, offset, size);
+    for (i = 0; i + 1 < size; i += 2) { t = p[i]; p[i] = p[i + 1]; p[i + 1] = t; }
+}
+#endif
+
 void TEXT_TEXTURE_UploadPalette(TexReq *req, void *dest)
 {
     u32 plttKeyOfs;
@@ -387,6 +403,10 @@ void TEXT_TEXTURE_UploadPalette(TexReq *req, void *dest)
     plttKeyOfs = (u16)req->plttVramKey * 8;
     GX_BeginLoadTexPltt();
     DC_FlushRange(dest, 32);
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    TEXT_TEXTURE_LoadTexPlttDsOrder(dest, plttBase + plttKeyOfs, 32);
+#else
     GX_LoadTexPltt(dest, plttBase + plttKeyOfs, 32);
+#endif
     GX_EndLoadTexPltt();
 }
