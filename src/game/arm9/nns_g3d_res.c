@@ -71,6 +71,17 @@ static inline void *NNSi_G3dGetResDataByIdx(const NNSG3dResDict *dict, u32 idx)
  * same reason: only 2.0 strength-reduces the scan's name pointer.  Derived
  * from the 7EC source and EXACT on the first compile.
  */
+#if !defined(__MWERKS__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+/* The trie's bit `b` of a name is bit b of the name's four words as the DS
+ * reads them, little-endian: byte b / 8 of the name, bit b % 8.  A
+ * big-endian host's word holds the bytes the other way round, so it reads
+ * the byte.  Dictionaries of 16 entries or more are tries; smaller ones are
+ * searched in order, whole names compared, which any host does alike. */
+#define DICT_NAME_BIT(nm, b) (((u32)(u8)(nm)->name[(b) >> 3] >> ((b) & 7)) & 1)
+#else
+#define DICT_NAME_BIT(nm, b) (((nm)->val[(b) >> 5] >> ((b) & 31)) & 1)
+#endif
+
 void *NNS_G3dGetResDataByName(const NNSG3dResDict *dict, const NNSG3dResName *name)
 {
     if (name == 0)
@@ -96,9 +107,9 @@ void *NNS_G3dGetResDataByName(const NNSG3dResDict *dict, const NNSG3dResName *na
             s32 bit = base[n].refBit;
             u32 idx;
             while (bitPrev > bit) {
-                n = (&x->idxLeft)[(name->val[bit >> 5] >> (bit & 31)) & 1];
+                n = (&x->idxLeft)[DICT_NAME_BIT(name, bit)];
                 bitPrev = x->refBit;
-                bit = base[(&x->idxLeft)[(name->val[bit >> 5] >> (bit & 31)) & 1]].refBit;
+                bit = base[(&x->idxLeft)[DICT_NAME_BIT(name, bit)]].refBit;
                 x = &base[n];
             }
             idx = x->idxEntry;
@@ -152,9 +163,9 @@ s32 NNS_G3dGetResDictIdxByName(const NNSG3dResDict *dict, const NNSG3dResName *n
             s32 bit = base[n].refBit;
             u32 idx;
             while (bitPrev > bit) {
-                n = (&x->idxLeft)[(name->val[bit >> 5] >> (bit & 31)) & 1];
+                n = (&x->idxLeft)[DICT_NAME_BIT(name, bit)];
                 bitPrev = x->refBit;
-                bit = base[(&x->idxLeft)[(name->val[bit >> 5] >> (bit & 31)) & 1]].refBit;
+                bit = base[(&x->idxLeft)[DICT_NAME_BIT(name, bit)]].refBit;
                 x = &base[n];
             }
             idx = x->idxEntry;
