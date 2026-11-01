@@ -902,7 +902,13 @@ int INTRO_CMD_AddCommand(IntroCmdWork *p, IntroCommand *q)
             break;
         }
     }
+#ifdef __MWERKS__
     return q->tail.bits.flag;
+#else
+    /* bit 0 of the word: a big-endian host allocates the unsigned char
+     * bit-field from the top bit of the word's first byte */
+    return q->tail.word & 1;
+#endif
 }
 
 extern int (*const gIntroCmdCommandTable[])(void *, void *, void *);
